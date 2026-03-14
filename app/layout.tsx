@@ -3,15 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 //@ts-ignore
 import "./globals.css";
 import AuthProvider from "./providers/auth-provider";
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import Navbar from "../components/navbar";
+import { TooltipProvider } from "@/components/ui/tooltip"
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Rimiacey AI - Learn & Visualise PDF Docs",
@@ -25,11 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`antialiased`}>
         <AuthProvider>
-        {children}
+          <Navbar />
+          <TooltipProvider>{children}</TooltipProvider>
         </AuthProvider>
       </body>
     </html>
