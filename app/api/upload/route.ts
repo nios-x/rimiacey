@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const parser = await pdf(buffer)
     const text = parser.text
     const chunks = chunkText(text.replaceAll("\n", " "))
-    const response= await Promise.all(chunks.slice(0,1).map(e=>getEmbedding(e)))
+    const response= await Promise.all(chunks.map(e=>getEmbedding(e)))
     const y = Math.random().toString()
     const colname = "pdf_chunks-"+y+"-"+file.name
     await qdrantClient.createCollection(colname, {
@@ -24,8 +24,6 @@ export async function POST(req: Request) {
             distance: "Cosine"
         }
     })  
-
-
     const points:any = response.map((vector, index) => ({
         id: index,
         vector: vector,
@@ -34,12 +32,9 @@ export async function POST(req: Request) {
             file: file.name
         }
     }))
-
     await qdrantClient.upsert(colname, {
         points
     })
-
-
     return NextResponse.json({
         success:true,
         file:file.name,

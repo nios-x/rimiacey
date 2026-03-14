@@ -162,8 +162,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Note: I'm using state to show active item.
   // IRL you should use the url/router.
   const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-  const [mails, setMails] = React.useState(data.mails)
+  const [pdfs, setPdfs] = React.useState<string[]>([])
+  const [pdfsLinks, setPdfsLinks] = React.useState<string[]>([])
   const { setOpen } = useSidebar()
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem('pdfs')
+      if (!raw) return
+      const arr = JSON.parse(raw)
+      if (!Array.isArray(arr)) return
+      let arrt:any= []
+      const parsed = arr
+        .filter((it) => typeof it === 'string')
+        .map((key) => {
+          const match = key.match(/^pdf_chunks-[^-]+-(.+)$/)
+          arrt.push(key)
+          return match ? match[1] : key
+        })
+      setPdfsLinks(arrt)
+      setPdfs(parsed)
+    } catch (err) {
+      console.error('Failed to read local pdfs', err)
+    }
+  }, [])
 
   return (
     <Sidebar
@@ -206,17 +229,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         children: item.title,
                         hidden: false,
                       }}
-                      onClick={() => {
-                        setActiveItem(item)
-                        const mail = data.mails.sort(() => Math.random() - 0.5)
-                        setMails(
-                          mail.slice(
-                            0,
-                            Math.max(5, Math.floor(Math.random() * 10) + 1)
-                          )
-                        )
-                        setOpen(true)
-                      }}
+                     
                       isActive={activeItem?.title === item.title}
                       className="px-2.5 md:px-2"
                     >
@@ -252,22 +265,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
-              {mails.map((mail) => (
-                <a
-                  href="#"
-                  key={mail.email}
-                  className="flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                >
-                  <div className="flex w-full items-center gap-2">
-                    <span>{mail.name}</span>{" "}
-                    <span className="ml-auto text-xs">{mail.date}</span>
+              {pdfs.length > 0 ? (
+                pdfs.map((pdf, idx) => (
+                  <div
+                    key={`${pdf}-${idx}`}
+                    className="flex flex-col gap-1 border-b p-3 text-sm leading-tight last:border-b-0"
+                  >
+                    <div className=" items-center gap-2 text-xs text-muted-foreground">
+                      
+
+                      <div className="font-bold text-zinc-800 text-[15px]">{pdf}</div>
+                      <div>{pdfsLinks[idx]}</div>
+                      span
+                    </div>
                   </div>
-                  <span className="font-medium">{mail.subject}</span>
-                  <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                    {mail.teaser}
-                  </span>
-                </a>
-              ))}
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  No PDFs uploaded yet. Upload one from the chat page.
+                </div>
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>

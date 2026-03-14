@@ -15,7 +15,5 @@ export async function getEmbedding(text: string) {
     normalize: true
   })
 
-  console.log(output)
-
   return Array.from(output.data)
 }
