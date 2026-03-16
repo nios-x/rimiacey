@@ -14,10 +14,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import Chats from "@/components/Chats"
+import type { CSSProperties } from "react"
 export default function Page() {
   return (
     <SidebarProvider
-      style={{"--sidebar-width": "350px",} as React.CSSProperties}>
+      style={{ "--sidebar-width": "350px" } as CSSProperties}>
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4">
@@ -38,7 +39,7 @@ export default function Page() {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">
+        <div className="flex flex-1 flex-col gap-4 p-4 relative">
           <Chats/>
         </div>
       </SidebarInset>
