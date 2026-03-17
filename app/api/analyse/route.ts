@@ -3,11 +3,16 @@ import { NextResponse } from "next/server";
 import { getEmbedding } from "@/lib/embeddings";
 import { qdrantClient } from "@/lib/quadrant";
 import neo4j from "neo4j-driver";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
-const openai = new OpenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+function createOpenAIClient(apiKey: string) {
+  return new OpenAI({
+    apiKey,
     baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-});
+  });
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -47,6 +52,16 @@ function createNeo4jDriver() {
 
 export async function POST(req: Request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.email) {
+            return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+        }
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (!user || !user.geminiKey) {
+            return NextResponse.json({ error: "Set your Gemini API key in settings." }, { status: 400 });
+        }
+        const openai = createOpenAIClient(user.geminiKey);
+
         const body = await req.json();
         const collectionName = body.collectionName;
         const overview = body.overview;
@@ -71,7 +86,7 @@ export async function POST(req: Request) {
         const messagesArray = Array.isArray(body.messages) ? body.messages : [];
         console.log(context)
         const response = await withRetry(() => openai.chat.completions.create({
-            model: "gemini-2.5-flash-preview",
+            model: "gemini-3-flash-preview",
             temperature: 0.2,
             messages: [
                 {

@@ -1,28 +1,26 @@
-import NextAuth from "next-auth"
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+
 export const authOptions = {
-  providers: [  
+  providers: [
     GoogleProvider({
-        clientId: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!
-    })
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
-}
-
-const options = {
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async signIn({ account, profile }:any) {
+    async signIn({ account, profile }: any) {
       if (account.provider === "google") {
-        console.log(
-          "Google profile:", profile,
-          account
-        )
-        return profile.email_verified && profile.email.endsWith("@example.com")
+        return Boolean(profile?.email);
       }
-      return true 
+      return true;
     },
-  }
-}
+    async session({ session, token }: any) {
+      return session;
+    },
+  },
+};
 
-const handler = NextAuth(authOptions)
+const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };

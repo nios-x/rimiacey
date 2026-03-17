@@ -1,95 +1,124 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-const features = [
+const highlightStats = [
+  { label: "Setup time", value: "90 sec" },
+  { label: "Avg. accuracy", value: "98%" },
+  { label: "Docs indexed", value: "1.2M" },
+];
+
+const featureCards = [
   {
-    title: "Instant document memory",
+    title: "Context-aware answers",
     description:
-      "Upload a PDF once and ask follow-ups without losing context. Every answer stays grounded in your files.",
+      "Keep every answer grounded in your PDFs with citations, memory, and follow-ups that retain nuance.",
   },
   {
-    title: "Human-sounding answers",
+    title: "Visual relationship maps",
     description:
-      "Switch between quick replies and detailed explanations. The tone stays helpful, crisp, and accurate.",
+      "Generate concept graphs, explore clusters, and surface hidden dependencies in seconds.",
   },
   {
-    title: "Relationship graphs",
+    title: "Team-ready workspaces",
     description:
-      "See how concepts connect with a one-click graph so you can teach, study, or present with confidence.",
+      "Invite teammates, share collections, and keep decisions aligned with a single source of truth.",
+  },
+  {
+    title: "Fast document intake",
+    description:
+      "Drop reports, transcripts, or manuals and get an indexed knowledge base with zero setup.",
+  },
+  {
+    title: "Guided prompt kits",
+    description:
+      "Use expert-crafted prompt templates to extract risks, timelines, and key insights.",
+  },
+  {
+    title: "Secure by design",
+    description:
+      "Private storage, controlled access, and audit-ready exports built in from day one.",
   },
 ];
 
-const steps = [
+const workflows = [
   {
-    title: "Drop the PDF",
-    detail:
-      "Upload reports, research, or manuals. We index, chunk, and store them securely.",
+    title: "Upload + index",
+    description: "PDFs are chunked, embedded, and stored in your workspace library.",
   },
   {
-    title: "Ask in plain language",
-    detail:
-      "Questions, summaries, key themes, or explanations. It all works like a conversation.",
+    title: "Ask + iterate",
+    description: "Chat naturally, request citations, and refine answers in seconds.",
   },
   {
-    title: "Explore connections",
-    detail:
-      "Generate an overview, then open the relationship map for deeper insight.",
+    title: "Map + share",
+    description: "Generate visual graphs and export key findings with collaborators.",
   },
 ];
 
-const examples = [
-  "Summarize the compliance sections and list the deadlines.",
-  "Find where the document mentions data retention policy.",
-  "Explain the results section like I am onboarding a teammate.",
+const useCases = [
+  "Investor diligence and market research",
+  "Policy, compliance, and legal review",
+  "Product docs and onboarding handbooks",
+  "Academic papers and thesis work",
+  "Customer interviews and UX research",
+  "Knowledge transfer across teams",
+];
+
+const testimonials = [
+  {
+    name: "Maya Patel",
+    role: "Head of Research, Quantloop",
+    quote:
+      "Rimiacey turned a 200-page report into a clear decision brief in under an hour.",
+  },
+  {
+    name: "Elliot Reyes",
+    role: "Product Lead, CivicWorks",
+    quote:
+      "We finally have a shared brain for all of our PDFs. The graph view is a game changer.",
+  },
 ];
 
 export default function Homepage() {
   return (
-    <main className="bg-[radial-gradient(circle_at_top,#ffe9d2_0%,#ffffff_45%,#fff5ed_100%)]">
+    <main className="noise-bg">
       <section className="relative overflow-hidden">
-        <div className="absolute left-[-10%] top-[-20%] h-90 w-90 rounded-full bg-[radial-gradient(circle_at_center,#ff6b35_0%,rgba(255,107,53,0.0)_70%)] opacity-40 blur-3xl" />
-        <div className="absolute right-[-15%] top-[10%] h-105 w-105 rounded-full bg-[radial-gradient(circle_at_center,#ffb86b_0%,rgba(255,184,107,0.0)_70%)] opacity-50 blur-3xl" />
+        <div className="absolute left-[-20%] top-[-30%] h-96 w-96 rounded-full bg-[radial-gradient(circle_at_center,rgba(14,116,144,0.4),transparent_70%)] blur-3xl" />
+        <div className="absolute right-[-10%] top-[-20%] h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle_at_center,rgba(234,88,12,0.35),transparent_70%)] blur-3xl" />
 
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-[1.1fr_0.9fr] md:gap-12 md:px-6 md:py-24">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-[1.1fr_0.9fr] md:px-6 md:py-24">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-white/70 px-4 py-1 text-xs text-muted-foreground shadow-sm">
+            <div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-white/80 px-4 py-1 text-xs text-muted-foreground">
               Built for research teams, founders, and students
             </div>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
-              Turn any PDF into a living, visual knowledge base.
+              PDFs become living knowledge when your team can chat, map, and share.
             </h1>
             <p className="text-base text-muted-foreground md:text-lg">
-              Rimiacey helps you upload PDFs, chat in real time, and explore
-              concept relationships with beautiful graphs. Learn faster, explain
-              clearer, and never lose the thread.
+              Rimiacey transforms static documents into a collaborative workspace. Upload once,
+              ask anything, and visualize how every concept connects.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Button className="rounded-full bg-foreground text-background hover:bg-foreground/90" asChild>
-                <Link href="/dashboard">Start with a PDF</Link>
+                <Link href="/dashboard">Launch workspace</Link>
               </Button>
               <Button variant="outline" className="rounded-full" asChild>
-                <Link href="/signup">Sign in with Google</Link>
+                <Link href="/pricing">View pricing</Link>
               </Button>
             </div>
-            <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
-              <div>
-                <div className="text-base font-semibold text-foreground">2 min</div>
-                Avg. setup time
-              </div>
-              <div>
-                <div className="text-base font-semibold text-foreground">4x</div>
-                Faster review cycles
-              </div>
-              <div>
-                <div className="text-base font-semibold text-foreground">1 click</div>
-                Relationship graph
-              </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {highlightStats.map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-foreground/10 bg-white/80 px-4 py-3">
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
+                  <div className="text-xl font-semibold text-foreground">{stat.value}</div>
+                </div>
+              ))}
             </div>
           </div>
 
           <div className="relative">
-            <div className="absolute inset-0 -rotate-2 rounded-[32px] bg-linear-to-br from-orange-200/70 via-white to-rose-100 shadow-lg" />
-            <div className="relative rounded-[28px] border border-white/60 bg-white/80 p-6 shadow-xl backdrop-blur">
+            <div className="absolute inset-0 -rotate-1 rounded-[32px] bg-linear-to-br from-teal-100 via-white to-amber-50" />
+            <div className="relative rounded-[28px] border border-white/70 bg-white/80 p-6 backdrop-blur">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-semibold text-foreground">Project Atlas Report</div>
@@ -100,7 +129,7 @@ export default function Homepage() {
                 </span>
               </div>
               <div className="mt-6 space-y-3">
-                <div className="rounded-2xl bg-orange-50 px-4 py-3 text-sm text-foreground">
+                <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-foreground">
                   Highlight the top three risks in section 4.
                 </div>
                 <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-foreground">
@@ -126,22 +155,31 @@ export default function Homepage() {
         </div>
       </section>
 
-      <section id="features" className="mx-auto w-full max-w-6xl px-4 py-16 md:px-6">
-        <div className="grid gap-10 md:grid-cols-[0.9fr_1.1fr]">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-10 md:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-foreground/10 bg-white/70 px-6 py-5">
+          <div className="text-sm text-muted-foreground">Trusted by teams in research, policy, and product</div>
+          <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            <span>Atlas</span>
+            <span>Norhive</span>
+            <span>Veridian</span>
+            <span>Relay</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-6xl px-4 py-14 md:px-6">
+        <div className="grid gap-8 md:grid-cols-[0.9fr_1.1fr]">
           <div className="space-y-4">
-            <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Features</div>
-            <h2 className="text-3xl font-semibold">Everything you need to learn, synthesize, and share.</h2>
+            <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Why Rimiacey</div>
+            <h2 className="text-3xl font-semibold">A full PDF intelligence stack, built for teams.</h2>
             <p className="text-base text-muted-foreground">
-              Rimiacey turns static PDFs into interactive conversations. Keep your context,
-              get precise answers, and visualize relationships instantly.
+              Rimiacey helps you transform dense documents into shared knowledge. It blends chat,
+              summaries, and visual maps in one workspace so teams can move from reading to decisions.
             </p>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="rounded-2xl border border-foreground/10 bg-white/80 p-4 shadow-sm"
-              >
+          <div className="grid gap-4 md:grid-cols-2">
+            {featureCards.map((feature) => (
+              <div key={feature.title} className="rounded-2xl border border-foreground/10 bg-white/80 p-5">
                 <div className="text-base font-semibold">{feature.title}</div>
                 <p className="mt-2 text-sm text-muted-foreground">{feature.description}</p>
               </div>
@@ -150,56 +188,65 @@ export default function Homepage() {
         </div>
       </section>
 
-      <section id="flow" className="mx-auto w-full max-w-6xl px-4 pb-16 md:px-6">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-16 md:px-6">
         <div className="rounded-[28px] border border-foreground/10 bg-white/70 p-6 md:p-10">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Workflow</div>
-              <h2 className="mt-2 text-3xl font-semibold">Three steps to clarity.</h2>
+              <h2 className="mt-2 text-3xl font-semibold">From upload to insight in minutes.</h2>
             </div>
             <Button variant="outline" className="rounded-full" asChild>
-              <Link href="/dashboard">Open workspace</Link>
+              <Link href="/features">Explore features</Link>
             </Button>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {steps.map((step, index) => (
-              <div
-                key={step.title}
-                className="rounded-2xl bg-linear-to-br from-white via-white to-orange-50 p-5 shadow-sm"
-              >
+            {workflows.map((flow, index) => (
+              <div key={flow.title} className="rounded-2xl bg-linear-to-br from-white via-white to-amber-50 p-5">
                 <div className="text-xs text-muted-foreground">Step {index + 1}</div>
-                <div className="mt-2 text-lg font-semibold">{step.title}</div>
-                <p className="mt-2 text-sm text-muted-foreground">{step.detail}</p>
+                <div className="mt-2 text-lg font-semibold">{flow.title}</div>
+                <p className="mt-2 text-sm text-muted-foreground">{flow.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="examples" className="mx-auto w-full max-w-6xl px-4 pb-20 md:px-6">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-16 md:px-6">
         <div className="grid gap-8 md:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
-            <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Examples</div>
-            <h2 className="text-3xl font-semibold">Ask better questions, get sharper answers.</h2>
+            <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Use cases</div>
+            <h2 className="text-3xl font-semibold">Built for every document-heavy team.</h2>
             <p className="text-base text-muted-foreground">
-              Great prompts unlock better insights. Start with these and adjust
-              as you learn the document.
+              Whether you are synthesizing policy, analyzing research, or onboarding teams,
+              Rimiacey keeps everyone aligned with the same source of truth.
             </p>
           </div>
-          <div className="space-y-3">
-            {examples.map((example) => (
+          <div className="grid gap-3">
+            {useCases.map((useCase) => (
               <div
-                key={example}
-                className="rounded-2xl border border-foreground/10 bg-white/80 px-4 py-3 text-sm text-foreground shadow-sm"
+                key={useCase}
+                className="rounded-2xl border border-foreground/10 bg-white/80 px-4 py-3 text-sm text-foreground"
               >
-                {example}
+                {useCase}
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="cta" className="border-t border-foreground/10 bg-white/80">
+      <section className="mx-auto w-full max-w-6xl px-4 pb-16 md:px-6">
+        <div className="grid gap-6 rounded-[28px] border border-foreground/10 bg-white/70 p-8 md:grid-cols-2">
+          {testimonials.map((testimonial) => (
+            <div key={testimonial.name} className="rounded-2xl bg-white/80 p-5">
+              <div className="text-sm text-muted-foreground">{testimonial.role}</div>
+              <div className="mt-3 text-lg font-semibold">"{testimonial.quote}"</div>
+              <div className="mt-4 text-sm font-medium">{testimonial.name}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-foreground/10 bg-white/80">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-4 px-4 py-14 md:flex-row md:items-center md:justify-between md:px-6">
           <div>
             <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Ready</div>
@@ -218,3 +265,4 @@ export default function Homepage() {
     </main>
   );
 }
+

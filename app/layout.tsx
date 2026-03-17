@@ -1,26 +1,37 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces } from "next/font/google";
+import localFont from "next/font/local";
 //@ts-ignore
 import "./globals.css";
 import AuthProvider from "./providers/auth-provider";
 import Navbar from "../components/navbar";
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { TooltipProvider } from "@/components/ui/tooltip";
 
-const geist = Geist({
-  subsets: ["latin"],
+const geist = localFont({
+  src: [
+    { path: "../public/fonts/Geist-Light.ttf", weight: "300", style: "normal" },
+    { path: "../public/fonts/Geist-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../public/fonts/Geist-Medium.ttf", weight: "500", style: "normal" },
+    { path: "../public/fonts/Geist-SemiBold.ttf", weight: "600", style: "normal" },
+    { path: "../public/fonts/Geist-Bold.ttf", weight: "700", style: "normal" },
+  ],
   variable: "--font-geist-sans",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
+const geistMono = localFont({
+  src: [
+    { path: "../public/fonts/Geist-Regular.ttf", weight: "400", style: "normal" },
+    { path: "../public/fonts/Geist-Medium.ttf", weight: "500", style: "normal" },
+  ],
   variable: "--font-geist-mono",
+  display: "swap",
 });
 
 const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-fraunces",
 });
-
 
 export const metadata: Metadata = {
   title: "Rimiacey AI - Learn & Visualise PDF Docs",
@@ -34,7 +45,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geist.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}>
+      <body
+        className={`${geist.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}
+      >
         <AuthProvider>
           <Navbar />
           <TooltipProvider>{children}</TooltipProvider>

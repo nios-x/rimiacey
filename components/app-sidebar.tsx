@@ -19,7 +19,6 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { FileIcon, SparklesIcon, Share2Icon, BookOpenIcon, SettingsIcon, TerminalIcon } from "lucide-react"
 
-// This is sample data
 const data = {
   user: {
     name: "Rimiacey",
@@ -30,73 +29,53 @@ const data = {
     {
       title: "Uploads",
       url: "#",
-      icon: (
-        <FileIcon />
-      ),
+      icon: <FileIcon />,
       isActive: true,
     },
     {
       title: "Chats",
       url: "#",
-      icon: (
-        <SparklesIcon />
-      ),
+      icon: <SparklesIcon />,
       isActive: false,
     },
     {
       title: "Graphs",
       url: "#",
-      icon: (
-        <Share2Icon />
-      ),
+      icon: <Share2Icon />,
       isActive: false,
     },
     {
       title: "Library",
       url: "#",
-      icon: (
-        <BookOpenIcon />
-      ),
+      icon: <BookOpenIcon />,
       isActive: false,
     },
     {
       title: "Settings",
       url: "#",
-      icon: (
-        <SettingsIcon />
-      ),
+      icon: <SettingsIcon />,
       isActive: false,
     },
   ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Note: I'm using state to show active item.
-  // IRL you should use the url/router.
   const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-  const [pdfs, setPdfs] = React.useState<string[]>([])
-  const [pdfsLinks, setPdfsLinks] = React.useState<string[]>([])
+  type UploadItem = { id: string; fileName: string; collectionName: string; createdAt: string }
+  const [uploads, setUploads] = React.useState<UploadItem[]>([])
+  const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const raw = localStorage.getItem('pdfs')
-      if (!raw) return
-      const arr = JSON.parse(raw)
-      if (!Array.isArray(arr)) return
-      let arrt:any= []
-      const parsed = arr
-        .filter((it) => typeof it === 'string')
-        .map((key) => {
-          const match = key.match(/^pdf_chunks-[^-]+-(.+)$/)
-          arrt.push(key)
-          return match ? match[1] : key
-        })
-      setPdfsLinks(arrt)
-      setPdfs(parsed)
-    } catch (err) {
-      console.error('Failed to read local pdfs', err)
+    const load = async () => {
+      try {
+        const res = await fetch("/api/upload")
+        const data = await res.json()
+        if (data.uploads) setUploads(data.uploads)
+      } catch (err) {
+        console.error("Failed to load uploads", err)
+      }
     }
+    load()
   }, [])
 
   return (
@@ -105,19 +84,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       className="overflow-hidden *:data-[sidebar=sidebar]:flex-row"
       {...props}
     >
-      {/* This is the first sidebar */}
-      {/* We disable collapsible and adjust width to icon. */}
-      {/* This will make the sidebar appear as icons. */}
       <Sidebar
         collapsible="none"
-        className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r"
+        className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r border-foreground/10 bg-white/80 pt-16"
       >
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
                 <a href="#">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-linear-to-br from-teal-600 via-emerald-500 to-amber-400 text-white">
                     <TerminalIcon className="size-4" />
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
@@ -158,14 +134,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarFooter>
       </Sidebar>
 
-      {/* This is the second sidebar */}
-      {/* We disable collapsible and let it fill remaining space */}
-      <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-        <SidebarHeader className="gap-3.5 border-b p-4">
+      <Sidebar
+        collapsible="none"
+        className="hidden flex-1 border-r border-foreground/10 bg-white/70 pt-16 md:flex"
+      >
+        <SidebarHeader className="gap-3.5 border-b border-foreground/10 p-4">
           <div className="flex w-full items-center justify-between">
-            <div className="text-base font-medium text-foreground">
-              {activeItem?.title}
-            </div>
+            <div className="text-base font-medium text-foreground">{activeItem?.title}</div>
             <Label className="flex items-center gap-2 text-sm">
               <span>Auto-sync</span>
               <Switch className="shadow-none" />
@@ -176,15 +151,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
-              {pdfs.length > 0 ? (
-                pdfs.map((pdf, idx) => (
+              {uploads.length > 0 ? (
+                uploads.map((upload) => (
                   <div
-                    key={`${pdf}-${idx}`}
-                    className="flex flex-col gap-1 border-b p-3 text-sm leading-tight last:border-b-0"
+                    key={upload.id}
+                    className="flex flex-col gap-1 border-b border-foreground/10 p-3 text-sm leading-tight last:border-b-0"
                   >
-                    <div className="items-center gap-2 text-xs text-muted-foreground">
-                      <div className="font-semibold text-zinc-800 text-[15px]">{pdfsLinks[idx] || pdf}</div>
-                      <div className="text-[11px] text-muted-foreground">Stored as {pdf}</div>
+                    <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground">
+                      <div>
+                        <div className="font-semibold text-zinc-800 text-[15px]">{upload.fileName}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          Uploaded {new Date(upload.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        className="rounded-full border border-red-200 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-50"
+                        disabled={deletingId === upload.id}
+                        onClick={async () => {
+                          setDeletingId(upload.id)
+                          try {
+                            const res = await fetch(`/api/upload?id=${upload.id}`, { method: "DELETE" })
+                            const body = await res.json()
+                            if (body.success) {
+                              setUploads((prev) => prev.filter((u) => u.id !== upload.id))
+                            }
+                          } catch (err) {
+                            console.error("Failed to delete upload", err)
+                          } finally {
+                            setDeletingId(null)
+                          }
+                        }}
+                      >
+                        {deletingId === upload.id ? "Deleting..." : "Delete"}
+                      </button>
                     </div>
                   </div>
                 ))

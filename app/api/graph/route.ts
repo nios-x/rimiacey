@@ -34,9 +34,11 @@ export async function GET(req: Request) {
 
     const result = await session.run(
       `
-      MATCH (a)-[r]->(b)
-RETURN a, r, b
-LIMIT 25
+      MATCH (p:Project {id: $projectId})-[:HAS_ENTITY]->(a:Entity)
+      OPTIONAL MATCH (a)-[r]->(b:Entity)
+      WHERE (p)-[:HAS_ENTITY]->(b)
+      RETURN a, r, b
+      LIMIT 200
       `,
       { projectId }
     );
