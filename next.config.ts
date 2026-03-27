@@ -5,10 +5,6 @@ const nextConfig: NextConfig = {
     // Type checking spawns a separate worker process that can be blocked in restricted environments.
     ignoreBuildErrors: true,
   },
-  experimental: {
-    // Force Next to use worker_threads instead of child_process.fork, avoiding spawn restrictions.
-    workerThreads: true,
-  },
   webpack: (config) => {
     // Allow native .node binaries (used by @napi-rs/canvas) to be bundled on the server.
     config.module.rules.push({
