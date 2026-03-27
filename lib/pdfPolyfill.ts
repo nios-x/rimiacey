@@ -6,9 +6,9 @@ import { GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf";
 import path from "path";
 import { pathToFileURL } from "url";
 
-// Build a file:// URL to the worker at runtime so webpack doesn't replace it.
+// Build a file:// URL to the worker we ship in /public so it exists in serverless bundles.
 const pdfjsWorkerPath = pathToFileURL(
-  path.join(process.cwd(), "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs"),
+  path.join(process.cwd(), "public", "pdf.worker.min.mjs"),
 ).href;
 
 declare global {
