@@ -1,6 +1,6 @@
 import chunkText from "@/app/utils/chunker";
 import { NextResponse } from "next/server";
-import pdf from "pdf-parse-new";
+import pdf from "pdf-parse";
 import { getEmbedding } from "@/lib/embeddings";
 import { qdrantClient } from "@/lib/quadrant";
 import { getServerSession } from "next-auth";
