@@ -1,6 +1,6 @@
 import chunkText from "@/app/utils/chunker";
 import { NextResponse } from "next/server";
-import pdf from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { getEmbedding } from "@/lib/embeddings";
 import { qdrantClient } from "@/lib/quadrant";
 import { getServerSession } from "next-auth";
@@ -73,8 +73,8 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const parser = await pdf(buffer);
-    const text = parser.text;
+    const parser = new PDFParse({ data: buffer });
+    const text = (await parser.getText()).text;
     const chunks = chunkText(text.replaceAll("\n", " "));
     const response = await Promise.all(chunks.map((e) => getEmbedding(e)));
 
