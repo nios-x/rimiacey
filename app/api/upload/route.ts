@@ -1,20 +1,7 @@
 export const runtime = "nodejs";
 
-// Ensure pdf.js has the DOM globals it expects when running in Node.
-import * as Canvas from "@napi-rs/canvas";
-const { DOMMatrix, ImageData, Path2D } = Canvas as typeof Canvas;
-if (!globalThis.DOMMatrix) {
-  // @ts-ignore
-  globalThis.DOMMatrix = DOMMatrix;
-}
-if (!globalThis.ImageData) {
-  // @ts-ignore
-  globalThis.ImageData = ImageData;
-}
-if (!globalThis.Path2D) {
-  // @ts-ignore
-  globalThis.Path2D = Path2D;
-}
+// Ensure pdf.js has DOM-related globals before pdf-parse loads.
+import "@/lib/canvasGlobals";
 import "@/lib/pdfPolyfill";
 import chunkText from "@/app/utils/chunker";
 import { NextResponse } from "next/server";
