@@ -1,13 +1,13 @@
 // Sets DOM-related globals using a native canvas implementation so pdf.js can run in Node.
 // Tries @napi-rs/canvas first (bundled with native binaries), falls back to canvas if available.
+// Use eval to avoid webpack trying to resolve optional deps we may not ship.
+const dynamicRequire = eval("require") as NodeRequire;
 let canvas: any;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  canvas = require("@napi-rs/canvas");
-} catch (err) {
+  canvas = dynamicRequire("@napi-rs/canvas");
+} catch {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    canvas = require("canvas");
+    canvas = dynamicRequire("canvas");
   } catch {
     canvas = null;
   }

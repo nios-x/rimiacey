@@ -3,10 +3,9 @@
 // `ReferenceError: DOMMatrix is not defined` at runtime.
 import "@/lib/canvasGlobals";
 import { GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf";
-// Legacy worker build exports a URL string in CommonJS/webpack environments.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import pdfjsWorker from "pdfjs-dist/legacy/build/pdf.worker.min.js";
+// Legacy worker build (mjs). Require to get the URL string under webpack.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pdfjsWorker = require("pdfjs-dist/legacy/build/pdf.worker.min.mjs");
 
 declare global {
   var DOMMatrix: typeof globalThis.DOMMatrix | undefined;
