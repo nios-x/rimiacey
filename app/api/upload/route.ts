@@ -75,6 +75,11 @@ export async function POST(req: Request) {
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
+    // Guardrail: avoid out-of-memory on serverless by capping upload size (5 MB).
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: "File too large (max 5 MB)" }, { status: 413 });
+    }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
