@@ -13,6 +13,26 @@ function createOpenAIClient(apiKey: string) {
   });
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function withRetry<T>(fn: () => Promise<T>, retries = 2) {
+  let attempt = 0;
+  let lastError: unknown;
+  while (attempt <= retries) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const status = error?.status ?? error?.response?.status;
+      if ((status !== 429 && status !== 503) || attempt === retries) break;
+      const backoff = 500 * Math.pow(2, attempt);
+      await sleep(backoff);
+    }
+    attempt += 1;
+  }
+  throw lastError;
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -32,6 +52,12 @@ export async function POST(req: Request) {
     const graph = body.graph;
     if (!collectionName || typeof collectionName !== "string") {
       return NextResponse.json({ error: "collectionName is required" }, { status: 400 });
+    }
+    const upload = await prisma.pdfUpload.findFirst({
+      where: { collectionName, userId: user.id },
+    });
+    if (!upload) {
+      return NextResponse.json({ error: "Collection not found for this user." }, { status: 404 });
     }
 
     const messagesArray = Array.isArray(body.messages) ? body.messages : [];
@@ -60,7 +86,7 @@ export async function POST(req: Request) {
 
     const context = contextChunks.join("\n\n");
     if (isOverview) {
-      const response = await openai.chat.completions.create({
+      const response = await withRetry(() => openai.chat.completions.create({
         model: "gemini-3-flash-preview",
         messages: [
           {
@@ -72,7 +98,7 @@ export async function POST(req: Request) {
             content: `Document chunks:\n${context}\n\nPlease provide a concise summary of the document content.  `,
           },
         ],
-      });
+      }));
 
       const assistantMessage = response.choices?.[0]?.message;
       return NextResponse.json({ success: true, assistantMessage, raw: response });
@@ -90,7 +116,7 @@ export async function POST(req: Request) {
       userContent = `Document context:\n${context}\n\nQuery:\n${query}`
     }
 
-    const response = await openai.chat.completions.create({
+    const response = await withRetry(() => openai.chat.completions.create({
       model: "gemini-3-flash-preview",
       messages: [
         {
@@ -103,7 +129,7 @@ export async function POST(req: Request) {
         },
         ...formattedHistory,
       ],
-    });
+    }));
 
     const assistantMessage = response.choices?.[0]?.message;
     return NextResponse.json({ success: true, assistantMessage, raw: response });
@@ -114,6 +140,12 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Rate limit reached. Please wait a moment and try again.", details: String(error) },
         { status: 429 }
+      );
+    }
+    if (status === 503) {
+      return NextResponse.json(
+        { error: "Upstream model service unavailable. Please try again shortly.", details: String(error) },
+        { status: 503 }
       );
     }
     return NextResponse.json({ error: "Could not generate completion", details: String(error) }, { status: 500 });

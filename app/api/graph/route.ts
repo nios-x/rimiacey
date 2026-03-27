@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import neo4j from "neo4j-driver";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import { prisma } from "@/lib/prisma";
 
 function createNeo4jDriver() {
   const uri = process.env.NEO4J_URI;
@@ -18,6 +21,14 @@ function createNeo4jDriver() {
 }
 
 export async function GET(req: Request) {
+  const sessionAuth = await getServerSession(authOptions);
+  if (!sessionAuth?.user?.email) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+  const user = await prisma.user.findUnique({ where: { email: sessionAuth.user.email } });
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
   const driver = createNeo4jDriver();
   const session = driver.session();
 
@@ -30,6 +41,12 @@ export async function GET(req: Request) {
         { error: "projectId required" },
         { status: 400 }
       );
+    }
+    const upload = await prisma.pdfUpload.findFirst({
+      where: { collectionName: projectId, userId: user.id },
+    });
+    if (!upload) {
+      return NextResponse.json({ error: "Collection not found for this user." }, { status: 404 });
     }
 
     const result = await session.run(

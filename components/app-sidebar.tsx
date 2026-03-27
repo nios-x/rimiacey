@@ -59,13 +59,30 @@ const data = {
   ],
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type UploadItem = { id: string; fileName: string; collectionName: string; createdAt: string };
+
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  uploads?: UploadItem[];
+  setUploads?: React.Dispatch<React.SetStateAction<UploadItem[]>>;
+  selectedDoc?: string;
+  onSelectDoc?: (collectionName: string, fileName: string) => void;
+};
+
+export function AppSidebar({
+  uploads: uploadsProp,
+  setUploads: setUploadsProp,
+  selectedDoc,
+  onSelectDoc,
+  ...props
+}: AppSidebarProps) {
   const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-  type UploadItem = { id: string; fileName: string; collectionName: string; createdAt: string }
-  const [uploads, setUploads] = React.useState<UploadItem[]>([])
+  const [uploadsInternal, setUploadsInternal] = React.useState<UploadItem[]>([])
+  const uploads = uploadsProp ?? uploadsInternal
+  const setUploads = setUploadsProp ?? setUploadsInternal
   const [deletingId, setDeletingId] = React.useState<string | null>(null)
 
   React.useEffect(() => {
+    if (uploadsProp) return
     const load = async () => {
       try {
         const res = await fetch("/api/upload")
@@ -76,7 +93,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
     }
     load()
-  }, [])
+  }, [uploadsProp, setUploads])
 
   return (
     <Sidebar
@@ -86,7 +103,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     >
       <Sidebar
         collapsible="none"
-        className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r border-foreground/10 bg-white/80 pt-16"
+        className="w-[calc(var(--sidebar-width-icon)+1px)]! border-r border-foreground/10 bg-white/80 pt-4 dark:border-white/10 dark:bg-slate-900/80"
       >
         <SidebarHeader>
           <SidebarMenu>
@@ -136,36 +153,41 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <Sidebar
         collapsible="none"
-        className="hidden flex-1 border-r border-foreground/10 bg-white/70 pt-16 md:flex"
+        className="hidden flex-1 border-r border-foreground/10 bg-white/70 pt-4 md:flex border-t-2 dark:border-white/10 dark:bg-slate-900/70"
       >
-        <SidebarHeader className="gap-3.5 border-b border-foreground/10 p-4">
-          <div className="flex w-full items-center justify-between">
-            <div className="text-base font-medium text-foreground">{activeItem?.title}</div>
-            <Label className="flex items-center gap-2 text-sm">
+        <SidebarHeader className="gap-3.5 border-foreground/10 p-4 border-t dark:border-white/10">
+          <div className="flex w-full items-center justify-between ">
+            <div className="text-base font-medium text-foreground dark:text-slate-100">{activeItem?.title}</div>
+            <Label className="flex items-center gap-2 text-sm dark:text-slate-200">
               <span>Auto-sync</span>
               <Switch className="shadow-none" />
             </Label>
           </div>
-          <SidebarInput placeholder="Search PDFs..." />
+          <SidebarInput placeholder="Search PDFs..." className="dark:border-white/10 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-400" />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
               {uploads.length > 0 ? (
-                uploads.map((upload) => (
+                uploads.map((upload) => {
+                  const isSelected = selectedDoc === upload.collectionName
+                  return (
                   <div
                     key={upload.id}
-                    className="flex flex-col gap-1 border-b border-foreground/10 p-3 text-sm leading-tight last:border-b-0"
+                    className={`flex flex-col gap-1 border-b border-foreground/10 p-3 text-sm leading-tight last:border-b-0 ${isSelected ? "bg-slate-100/70 dark:bg-white/5" : ""}`}
                   >
-                    <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground">
-                      <div>
-                        <div className="font-semibold text-zinc-800 text-[15px]">{upload.fileName}</div>
-                        <div className="text-[11px] text-muted-foreground">
+                    <div className="flex items-start justify-between gap-2 text-xs text-muted-foreground dark:text-slate-300">
+                      <button
+                        className="text-left"
+                        onClick={() => onSelectDoc?.(upload.collectionName, upload.fileName)}
+                      >
+                        <div className={`font-semibold text-[15px] ${isSelected ? "text-slate-900 dark:text-white" : "text-zinc-800 dark:text-slate-100"}`}>{upload.fileName}</div>
+                        <div className="text-[11px] text-muted-foreground dark:text-slate-400">
                           Uploaded {new Date(upload.createdAt).toLocaleDateString()}
                         </div>
-                      </div>
+                      </button>
                       <button
-                        className="rounded-full border border-red-200 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-50"
+                        className="rounded-full border border-red-200 px-2 py-0.5 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-400/40 dark:text-red-300 dark:hover:bg-red-500/10"
                         disabled={deletingId === upload.id}
                         onClick={async () => {
                           setDeletingId(upload.id)
@@ -174,6 +196,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             const body = await res.json()
                             if (body.success) {
                               setUploads((prev) => prev.filter((u) => u.id !== upload.id))
+                              if (selectedDoc === upload.collectionName) {
+                                const remaining = uploads.filter((u) => u.id !== upload.id)
+                                if (remaining.length > 0) {
+                                  onSelectDoc?.(remaining[0].collectionName, remaining[0].fileName)
+                                } else {
+                                  onSelectDoc?.("", "")
+                                }
+                              }
                             }
                           } catch (err) {
                             console.error("Failed to delete upload", err)
@@ -186,9 +216,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       </button>
                     </div>
                   </div>
-                ))
+                )})
               ) : (
-                <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground dark:border-white/10 dark:text-slate-300">
                   No PDFs uploaded yet. Upload one from the chat page.
                 </div>
               )}

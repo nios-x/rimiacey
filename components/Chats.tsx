@@ -5,12 +5,25 @@ import ReactMarkdown from "react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import { Network } from "vis-network";
 
-export default function Chats() {
+type UploadItem = { id: string; fileName: string; collectionName: string; createdAt: string };
+
+type ChatsProps = {
+  uploads?: UploadItem[];
+  setUploads?: React.Dispatch<React.SetStateAction<UploadItem[]>>;
+  selectedDoc?: string;
+  setSelectedDoc?: React.Dispatch<React.SetStateAction<string>>;
+};
+
+export default function Chats({
+  uploads: uploadsProp,
+  setUploads: setUploadsProp,
+  selectedDoc: selectedDocProp,
+  setSelectedDoc: setSelectedDocProp,
+}: ChatsProps) {
   type ChatMessage = { role: "user" | "model"; message: string };
   type GraphNode = { id: string | number; label: string };
   type GraphEdge = { source: string | number; target: string | number; label: string };
   type GraphState = { nodes: GraphNode[]; edges: GraphEdge[] };
-  type UploadItem = { id: string; fileName: string; collectionName: string; createdAt: string };
 
   const [isPDFUploaded, setIsPDFUploaded] = useState(false);
   const [name, setName] = useState("");
@@ -27,8 +40,12 @@ export default function Chats() {
   const [reasoningInProgress, setReasoningInProgress] = useState(false);
   const [reasoningStage, setReasoningStage] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [recentDocs, setRecentDocs] = useState<UploadItem[]>([]);
-  const [selectedDoc, setSelectedDoc] = useState<string>("");
+  const [recentDocsInternal, setRecentDocsInternal] = useState<UploadItem[]>([]);
+  const [docnameInternal, setDocNameInternal] = useState("");
+  const recentDocs = uploadsProp ?? recentDocsInternal;
+  const setRecentDocs = setUploadsProp ?? setRecentDocsInternal;
+  const docname = selectedDocProp ?? docnameInternal;
+  const setDocName = setSelectedDocProp ?? setDocNameInternal;
   const networkRef = useRef<Network | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -38,7 +55,7 @@ export default function Chats() {
     const container = document.getElementById("graph");
     if (!container) return;
 
-    const data = {
+    const data:any = {
       nodes: graph.nodes.map((n) => ({ id: n.id, label: n.label })),
       edges: graph.edges.map((e) => ({
         from: e.source,
@@ -90,32 +107,59 @@ export default function Chats() {
   }, [graph, relationOpen]);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadUser = async () => {
       try {
-        const [userRes, uploadRes] = await Promise.all([fetch("/api/user"), fetch("/api/upload")]);
+        const userRes = await fetch("/api/user");
         if (userRes.ok) {
           const userData = await userRes.json();
           if (userData.user?.geminiKey) {
             setHasKey(true);
           }
         }
+      } catch (err) {
+        console.error("Could not load user", err);
+      }
+    };
+    loadUser();
+  }, []);
 
+  useEffect(() => {
+    if (uploadsProp) {
+      if (uploadsProp.length) {
+        setIsPDFUploaded(true);
+        if (!docname) {
+          setDocName(uploadsProp[0].collectionName);
+          setName(uploadsProp[0].fileName);
+        } else {
+          const current = uploadsProp.find((u) => u.collectionName === docname);
+          if (current) setName(current.fileName);
+        }
+      } else {
+        setIsPDFUploaded(false);
+        if (docname) {
+          setDocName("");
+        }
+      }
+      return;
+    }
+    const loadUploads = async () => {
+      try {
+        const uploadRes = await fetch("/api/upload");
         if (uploadRes.ok) {
           const uploadData = await uploadRes.json();
           if (uploadData.uploads?.length) {
             setRecentDocs(uploadData.uploads);
-            setSelectedDoc(uploadData.uploads[0].collectionName);
             setDocName(uploadData.uploads[0].collectionName);
             setName(uploadData.uploads[0].fileName);
             setIsPDFUploaded(true);
           }
         }
       } catch (err) {
-        console.error("Could not load user or uploads", err);
+        console.error("Could not load uploads", err);
       }
     };
-    loadData();
-  }, []);
+    loadUploads();
+  }, [uploadsProp, docname, setDocName, setRecentDocs]);
 
   const fetchGraph = async () => {
     if (!docname) {
@@ -137,6 +181,10 @@ export default function Chats() {
         return;
       }
       setGraph(data);
+      if (!data?.nodes?.length) {
+        setError("No graph data yet. Run Overview to generate relationships.");
+        return;
+      }
       setRelationOpen(true);
     } catch (err) {
       setError("Could not fetch graph");
@@ -160,7 +208,7 @@ export default function Chats() {
       });
       const data = await response.json();
       if (data.success && data.assistantMessage?.content) {
-        setGraph(data.assistantMessage.content);
+        // Graph data is stored in Neo4j; fetch it when the user opens Relationships.
       } else {
         setError(data.error || "Could not generate analysis");
         setChats((prev) => [
@@ -197,7 +245,6 @@ export default function Chats() {
       message: "Hello! Upload a PDF, then ask anything about it.",
     },
   ]);
-  const [docname, setDocName] = useState("");
   useEffect(() => {
     const last = chats[chats.length - 1];
     if (last?.role === "model") {
@@ -445,7 +492,7 @@ export default function Chats() {
       const data = await response.json();
       if (data.success) {
         setDocName(data.collectionName);
-        setSelectedDoc(data.collectionName);
+        setDocName(data.collectionName);
         setIsPDFUploaded(true);
         const next = [
           { id: data.uploadId, fileName: data.file, collectionName: data.collectionName, createdAt: new Date().toISOString() },
@@ -468,10 +515,10 @@ export default function Chats() {
 
   if (!isPDFUploaded) {
     return (
-      <div className="mx-auto grid w-full max-w-5xl gap-6 rounded-[32px] border border-foreground/10 bg-white/80 p-8 md:grid-cols-[1.1fr_0.9fr]">
+      <div className="mx-auto grid w-full max-w-5xl gap-6 rounded-[32px] border border-foreground/10 bg-white/80 p-5 sm:p-6 md:p-8 md:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-4">
           <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Get started</div>
-          <h2 className="text-3xl font-semibold">Upload a PDF to build your workspace.</h2>
+          <h2 className="text-2xl font-semibold sm:text-3xl">Upload a PDF to build your workspace.</h2>
           <p className="text-sm text-muted-foreground">
             We will index your document, surface highlights, and keep context so you can ask follow-ups.
           </p>
@@ -485,11 +532,10 @@ export default function Chats() {
                 {recentDocs.map((upload) => (
                   <div key={upload.id} className="flex items-center justify-between gap-2 rounded-full border border-border bg-slate-50 px-3 py-1 text-xs">
                     <button
-                      className={`flex-1 text-left ${selectedDoc === upload.collectionName ? "font-semibold" : "text-muted-foreground"}`}
+                      className={`flex-1 text-left ${docname === upload.collectionName ? "font-semibold" : "text-muted-foreground"}`}
                       onClick={() => {
                         setDocName(upload.collectionName);
                         setIsPDFUploaded(true);
-                        setSelectedDoc(upload.collectionName);
                         setName(`Using collection: ${upload.fileName}`);
                       }}
                     >
@@ -501,14 +547,13 @@ export default function Chats() {
                         setIsProcessing(true);
                         const res = await fetch(`/api/upload?id=${upload.id}`, { method: "DELETE" });
                         const body = await res.json();
-                        if (body.success) {
-                          setRecentDocs((prev) => prev.filter((u) => u.id !== upload.id));
-                          if (selectedDoc === upload.collectionName) {
-                            setIsPDFUploaded(false);
-                            setSelectedDoc("");
-                            setDocName("");
-                          }
-                        } else {
+                          if (body.success) {
+                            setRecentDocs((prev) => prev.filter((u) => u.id !== upload.id));
+                            if (docname === upload.collectionName) {
+                              setIsPDFUploaded(false);
+                              setDocName("");
+                            }
+                          } else {
                           setError(body.error || "Could not delete upload");
                         }
                         setIsProcessing(false);
@@ -522,12 +567,12 @@ export default function Chats() {
             </div>
           )}
         </div>
-        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-foreground/15 bg-amber-50/40 p-6 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-foreground/15 bg-amber-50/40 p-5 sm:p-6 text-center">
           <div className="text-lg font-semibold">Upload a PDF</div>
           <div className="text-xs text-muted-foreground">Supported: reports, manuals, research papers.</div>          {!hasKey && (
             <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-50 p-3 text-left">
               <div className="text-xs font-semibold text-amber-800">Enter your Gemini API key first</div>
-              <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                 <input
                   value={geminiKey}
                   onChange={(e) => setGeminiKey(e.target.value)}
@@ -538,7 +583,7 @@ export default function Chats() {
                 <button
                   onClick={saveGeminiKey}
                   disabled={isProcessing}
-                  className="rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background disabled:opacity-40"
+                  className="w-full rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background disabled:opacity-40 sm:w-auto"
                 >
                   Save
                 </button>
@@ -561,7 +606,7 @@ export default function Chats() {
 
   return (
     <>
-      <div className="mx-auto flex h-full min-h-[32rem] w-full flex-col rounded-[32px] border border-foreground/10 bg-white/80 p-4">
+      <div className="mx-auto flex h-full w-full flex-col rounded-[32px] border border-foreground/10 bg-white/80 p-3 sm:p-4 md:min-h-[32rem]">
         {relationOpen && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
             <div className="relative h-full w-full border border-white/30 bg-white p-4 md:p-6">
@@ -572,15 +617,15 @@ export default function Chats() {
                 Close
               </Button>
               <div className="absolute left-4 top-4 rounded-2xl border border-foreground/10 bg-white/90 px-3 py-2 text-xs text-muted-foreground">
-                Drag to move · Scroll to zoom · Click nodes to focus
+                Drag to move | Scroll to zoom | Click nodes to focus
               </div>
               <div id="graph" className="h-full w-full" />
             </div>
           </div>
         )}
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3 px-2">
+        <div className="mb-3 flex flex-col gap-3 px-1 sm:flex-row sm:items-end sm:justify-between sm:px-2">
           <div>
-            <div className="text-lg font-semibold">Chat with your PDF</div>
+            <div className="text-base font-semibold sm:text-lg">Chat with your PDF</div>
             <p className="text-xs text-muted-foreground">Ask questions and get document-aware replies.</p>
             {docname && <p className="text-xs text-primary">Current collection: {docname}</p>}
           </div>
@@ -596,13 +641,13 @@ export default function Chats() {
             />
             <Button
               variant="secondary"
-              className="rounded-full px-4"
+              className="w-full rounded-full px-4 sm:w-auto"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
               {isUploading ? "Uploading..." : "Upload new PDF"}
             </Button>
-            <span>{name || "Ready"}</span>
+            <span className="w-full truncate sm:w-auto">{name || "Ready"}</span>
             {isProcessing && (
               <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[11px]">Working...</span>
             )}
@@ -613,7 +658,7 @@ export default function Chats() {
             {error}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto rounded-2xl border border-foreground/10 bg-white p-4">
+        <div className="flex-1 overflow-y-auto rounded-2xl border border-foreground/10 bg-white p-3 sm:p-4">
           <div className="space-y-3">
             {chats.map((e, i) => {
               const isUser = e.role === "user";
@@ -622,7 +667,7 @@ export default function Chats() {
               return (
                 <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                    className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm sm:max-w-[80%] ${
                       isUser
                         ? "bg-foreground text-background"
                         : "bg-emerald-50 text-slate-900"
@@ -635,8 +680,8 @@ export default function Chats() {
             })}
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex w-full gap-2 overflow-x-auto text-xs text-muted-foreground sm:flex-wrap">
             {[
               "Summarize key risks",
               "Extract timelines",
@@ -645,7 +690,7 @@ export default function Chats() {
               <button
                 key={chip}
                 onClick={() => setMessage(chip)}
-                className="rounded-full border border-foreground/10 bg-white px-3 py-1 transition hover:bg-muted"
+                className="whitespace-nowrap rounded-full border border-foreground/10 bg-white px-3 py-1 transition hover:bg-muted"
               >
                 {chip}
               </button>
@@ -655,7 +700,7 @@ export default function Chats() {
         {!hasKey && (
           <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             <div className="mb-2 font-semibold">Enter your Gemini API key to use this workspace:</div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 value={geminiKey}
                 onChange={(e) => setGeminiKey(e.target.value)}
@@ -663,21 +708,21 @@ export default function Chats() {
                 placeholder="Gemini API key"
                 className="flex-1 rounded-xl border border-amber-300 px-3 py-2 text-sm outline-none"
               />
-              <Button onClick={saveGeminiKey} disabled={isProcessing}>Save key</Button>
+              <Button className="w-full sm:w-auto" onClick={saveGeminiKey} disabled={isProcessing}>Save key</Button>
             </div>
           </div>
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:flex-wrap">
           <TextareaAutosize
             minRows={1}
-            className="min-w-[14rem] flex-1 resize-none rounded-2xl border border-foreground/10 bg-white px-4 py-2 text-sm outline-none focus:border-foreground"
+            className="col-span-2 min-w-0 flex-1 resize-none rounded-2xl border border-foreground/10 bg-white px-4 py-2 text-sm outline-none focus:border-foreground sm:col-span-1 sm:min-w-[14rem]"
             placeholder="Type your question..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
           <Button
             onClick={() => sendMessage(false)}
-            className="h-full rounded-full px-6"
+            className="h-full w-full rounded-full px-4 py-2 text-xs sm:w-auto sm:px-6 sm:text-sm"
             disabled={!message.trim() || isProcessing}
           >
             {isProcessing ? "Sending..." : "Send"}
@@ -685,7 +730,7 @@ export default function Chats() {
           <Button
             variant="secondary"
             onClick={sendReasoningFlow}
-            className="h-full rounded-full px-6"
+            className="h-full w-full rounded-full px-4 py-2 text-xs sm:w-auto sm:px-6 sm:text-sm"
             disabled={!message.trim() || isProcessing || reasoningInProgress}
           >
             {reasoningInProgress ? `Reasoning ${reasoningStage ? `${reasoningStage}/5` : "..."}` : "Reasoning"}
@@ -693,7 +738,7 @@ export default function Chats() {
           <Button
             variant="secondary"
             onClick={sendOverview}
-            className="h-full rounded-full px-4"
+            className="h-full w-full rounded-full px-4 py-2 text-xs sm:w-auto sm:text-sm"
             disabled={isProcessing || !docname}
           >
             {isProcessing ? "Working..." : "Overview"}
@@ -701,7 +746,7 @@ export default function Chats() {
           <Button
             variant="secondary"
             onClick={fetchGraph}
-            className="h-full rounded-full px-4"
+            className="h-full w-full rounded-full px-4 py-2 text-xs sm:w-auto sm:text-sm"
             disabled={!overview.length || isProcessing}
           >
             {isProcessing ? "Loading..." : "Relationship"}

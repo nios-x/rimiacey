@@ -25,7 +25,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2) {
         } catch (error: any) {
             lastError = error;
             const status = error?.status ?? error?.response?.status;
-            if (status !== 429 || attempt === retries) break;
+            if ((status !== 429 && status !== 503) || attempt === retries) break;
             const backoff = 500 * Math.pow(2, attempt);
             await sleep(backoff);
         }
@@ -67,6 +67,12 @@ export async function POST(req: Request) {
         const overview = body.overview;
         if (!collectionName || typeof collectionName !== "string") {
             return NextResponse.json({ error: "collectionName is required" }, { status: 400 });
+        }
+        const upload = await prisma.pdfUpload.findFirst({
+            where: { collectionName, userId: user.id },
+        });
+        if (!upload) {
+            return NextResponse.json({ error: "Collection not found for this user." }, { status: 404 });
         }
         const queryVector: any = await getEmbedding(overview);
         const searchresult = await qdrantClient.search(collectionName, {
@@ -162,17 +168,55 @@ Generate Cypher queries for this project.
         const assistantMessage = response.choices?.[0]?.message;
         console.log(assistantMessage)
         const queries = assistantMessage?.content?.split("\n") || [];
-        const driver = createNeo4jDriver();
-        const session = driver.session();
-
-        try {
-            for (const query of queries) {
-                if (query.trim()) {
-                    await session.run(query);
+        const projectId = collectionName;
+        const projectName = collectionName;
+        const safeProjectIdDouble = projectId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const safeProjectIdSingle = projectId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        const safeProjectNameDouble = projectName.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const safeProjectNameSingle = projectName.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        const normalizedQueries = queries.map((query) =>
+            query
+                .replace(/"project_id"/g, `"${safeProjectIdDouble}"`)
+                .replace(/'project_id'/g, `'${safeProjectIdSingle}'`)
+                .replace(/id:\s*project_id\b/g, `id: "${safeProjectIdDouble}"`)
+                .replace(/"Project Name"/g, `"${safeProjectNameDouble}"`)
+                .replace(/'Project Name'/g, `'${safeProjectNameSingle}'`)
+                .replace(/name:\s*Project Name\b/g, `name: "${safeProjectNameDouble}"`)
+        );
+        const entityNames = new Set<string>();
+        const entityRegex = /:Entity\s*\{\s*name\s*:\s*(?:"([^"]+)"|'([^']+)')\s*\}/g;
+        for (const query of normalizedQueries) {
+            let match: RegExpExecArray | null;
+            while ((match = entityRegex.exec(query)) !== null) {
+                const name = match[1] ?? match[2];
+                if (name && name.trim()) {
+                    entityNames.add(name.trim());
                 }
             }
+        }
+        const driver = createNeo4jDriver();
+        const driverSession = driver.session();
+
+        try {
+            await driverSession.run(
+                "MERGE (p:Project {id: $id, name: $name})",
+                { id: projectId, name: projectName }
+            );
+            for (const name of entityNames) {
+                await driverSession.run(
+                    "MERGE (e:Entity {name: $name}) WITH e MATCH (p:Project {id: $id}) MERGE (p)-[:HAS_ENTITY]->(e)",
+                    { id: projectId, name }
+                );
+            }
+            for (const query of normalizedQueries) {
+                const trimmed = query.trim();
+                if (!trimmed || trimmed.startsWith("```")) {
+                    continue;
+                }
+                await driverSession.run(trimmed);
+                }
         } finally {
-            await session.close();
+            await driverSession.close();
             await driver.close();
         }
 
@@ -184,6 +228,12 @@ Generate Cypher queries for this project.
             return NextResponse.json(
                 { error: "Rate limit reached. Please wait a moment and try again.", details: String(error) },
                 { status: 429 }
+            );
+        }
+        if (status === 503) {
+            return NextResponse.json(
+                { error: "Upstream model service unavailable. Please try again shortly.", details: String(error) },
+                { status: 503 }
             );
         }
         return NextResponse.json({ error: "Could not generate completion", details: String(error) }, { status: 500 });

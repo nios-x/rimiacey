@@ -4,7 +4,6 @@ import localFont from "next/font/local";
 //@ts-ignore
 import "./globals.css";
 import AuthProvider from "./providers/auth-provider";
-import Navbar from "../components/navbar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geist = localFont({
@@ -49,7 +48,6 @@ export default function RootLayout({
         className={`${geist.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}
       >
         <AuthProvider>
-          <Navbar />
           <TooltipProvider>{children}</TooltipProvider>
         </AuthProvider>
       </body>
