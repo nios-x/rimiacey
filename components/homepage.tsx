@@ -303,9 +303,10 @@ export default function Homepage() {
 
         <div className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-16 md:grid-cols-[1.1fr_0.9fr] md:px-6 md:py-24">
           <div className="space-y-6" data-animate="hero">
-            <div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-white/80 px-4 py-1 text-xs text-muted-foreground">
+            <div className="lg:inline-flex hidden items-center gap-2 rounded-full border border-foreground/10 bg-white/80 px-4 py-[2px] text-xs text-muted-foreground">
               Built for research teams, founders, and students
             </div>
+            <div className="py-7"></div>
             <h1 className="text-4xl font-semibold leading-tight md:text-5xl">
               PDFs become living knowledge when your team can chat, map, and share.
             </h1>

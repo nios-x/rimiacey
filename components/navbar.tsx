@@ -19,8 +19,8 @@ export default function Navbar() {
   useEffect(() => {
     const root = document.documentElement;
     const stored = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
-    const shouldUseDark = stored ? stored === "dark" : prefersDark;
+    // Default to light; only enable dark when user explicitly saved it.
+    const shouldUseDark = stored ? stored === "dark" : false;
     root.classList.toggle("dark", shouldUseDark);
     setIsDark(shouldUseDark);
   }, []);

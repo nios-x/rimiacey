@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import "@/lib/pdfPolyfill";
 import chunkText from "@/app/utils/chunker";
 import { NextResponse } from "next/server";
