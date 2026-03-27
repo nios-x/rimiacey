@@ -1,3 +1,4 @@
+import "@/lib/pdfPolyfill";
 import chunkText from "@/app/utils/chunker";
 import { NextResponse } from "next/server";
 import { PDFParse } from "pdf-parse";
