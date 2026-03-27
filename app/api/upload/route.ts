@@ -2,10 +2,9 @@ export const runtime = "nodejs";
 
 // Ensure pdf.js has DOM-related globals before pdf-parse loads.
 import "@/lib/canvasGlobals";
-import "@/lib/pdfPolyfill";
+import { extractPdfText } from "@/lib/pdfText";
 import chunkText from "@/app/utils/chunker";
 import { NextResponse } from "next/server";
-import { PDFParse } from "pdf-parse";
 import { getEmbedding } from "@/lib/embeddings";
 import { qdrantClient } from "@/lib/quadrant";
 import { getServerSession } from "next-auth";
@@ -81,10 +80,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File too large (max 5 MB)" }, { status: 413 });
     }
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const parser = new PDFParse({ data: buffer });
-    const text = (await parser.getText()).text;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const text = await extractPdfText(bytes);
     const chunks = chunkText(text.replaceAll("\n", " "));
     const response = await Promise.all(chunks.map((e) => getEmbedding(e)));
 
