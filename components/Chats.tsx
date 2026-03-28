@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import ReactMarkdown from "react-markdown";
 import TextareaAutosize from "react-textarea-autosize";
 import { Network } from "vis-network";
+import chunkText from "@/app/utils/chunker";
 
 type UploadItem = { id: string; fileName: string; collectionName: string; createdAt: string };
 
@@ -37,6 +38,8 @@ export default function Chats({
   const [relationOpen, setRelationOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pageProgress, setPageProgress] = useState({ done: 0, total: 0 });
+  const [chunkProgress, setChunkProgress] = useState({ done: 0, total: 0 });
   const [reasoningInProgress, setReasoningInProgress] = useState(false);
   const [reasoningStage, setReasoningStage] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -480,37 +483,115 @@ export default function Chats({
 
     setError("");
     setIsUploading(true);
-    setName("Processing File: " + selectedFile.name + "...");
+    setPageProgress({ done: 0, total: 0 });
+    setChunkProgress({ done: 0, total: 0 });
+    setName("Preparing upload: " + selectedFile.name + "...");
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
+    let uploadId = "";
+    let collectionName = "";
+
+    // Step 1: init upload and create collection
     try {
-      const response = await fetch("/api/upload", {
+      const initRes = await fetch("/api/upload/init", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: selectedFile.name }),
       });
-      const data = await response.json();
-      if (data.success) {
-        setDocName(data.collectionName);
-        setDocName(data.collectionName);
-        setIsPDFUploaded(true);
-        const next = [
-          { id: data.uploadId, fileName: data.file, collectionName: data.collectionName, createdAt: new Date().toISOString() },
-          ...recentDocs.filter((x) => x.collectionName !== data.collectionName),
-        ];
-        setRecentDocs(next);
-        setName("Upload Complete");
-      } else {
-        setError(data.error || "Upload failed");
-        setName("Upload failed");
+      const initData = await initRes.json();
+      if (!initRes.ok || !initData.success) {
+        throw new Error(initData.error || "Could not start upload");
       }
-    } catch (err) {
-      console.error("Error Occured", err);
-      setError("Upload failed");
+      uploadId = initData.uploadId;
+      collectionName = initData.collectionName;
+    } catch (err: any) {
+      console.error("Upload init error", err);
+      setError(err?.message || "Could not start upload");
       setName("Upload failed");
-    } finally {
       setIsUploading(false);
+      return;
     }
+
+    // Step 2: extract pages in small batches
+    const PAGE_BATCH = 3;
+    let allPages: { page: number; text: string }[] = [];
+    let totalPages = 0;
+    let current = 1;
+
+    try {
+      while (true) {
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("start", String(current));
+        formData.append("end", String(current + PAGE_BATCH - 1));
+
+        const res = await fetch("/api/upload/extract", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "Page extraction failed");
+        }
+        totalPages = data.totalPages;
+        const pages = Array.isArray(data.pages) ? data.pages : [];
+        allPages = [...allPages, ...pages];
+
+        const done = Math.min(totalPages, current + PAGE_BATCH - 1);
+        setPageProgress({ done, total: totalPages });
+        setName(`Extracted ${done}/${totalPages} pages...`);
+
+        current += PAGE_BATCH;
+        if (done >= totalPages) break;
+      }
+    } catch (err: any) {
+      console.error("Extract error", err);
+      setError(err?.message || "Could not extract pages");
+      setName("Upload failed");
+      setIsUploading(false);
+      return;
+    }
+
+    // Step 3: chunk text and ingest in small batches to Qdrant
+    allPages.sort((a, b) => a.page - b.page);
+    const fullText = allPages.map((p) => p.text).join("\n");
+    const chunks = chunkText(fullText.replaceAll("\n", " "));
+    setChunkProgress({ done: 0, total: chunks.length });
+
+    try {
+      const CHUNK_BATCH = 7;
+      for (let i = 0; i < chunks.length; i += CHUNK_BATCH) {
+        const batch = chunks.slice(i, i + CHUNK_BATCH);
+        const ingestRes = await fetch("/api/upload/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ collectionName, uploadId, chunks: batch, fileName: selectedFile.name }),
+        });
+        const ingestData = await ingestRes.json();
+        if (!ingestRes.ok || !ingestData.success) {
+          throw new Error(ingestData.error || "Chunk ingest failed");
+        }
+        const done = Math.min(chunks.length, i + batch.length);
+        setChunkProgress({ done, total: chunks.length });
+        setName(`Indexed ${done}/${chunks.length} chunks...`);
+      }
+    } catch (err: any) {
+      console.error("Ingest error", err);
+      setError(err?.message || "Could not index chunks");
+      setName("Upload failed");
+      setIsUploading(false);
+      return;
+    }
+
+    // Success
+    setDocName(collectionName);
+    setIsPDFUploaded(true);
+    const next = [
+      { id: uploadId, fileName: selectedFile.name, collectionName, createdAt: new Date().toISOString() },
+      ...recentDocs.filter((x) => x.collectionName !== collectionName),
+    ];
+    setRecentDocs(next);
+    setName("Upload complete");
+    setError("");
+    setPageProgress({ done: 0, total: 0 });
+    setChunkProgress({ done: 0, total: 0 });
+    setIsUploading(false);
   };
 
   if (!isPDFUploaded) {
@@ -569,7 +650,8 @@ export default function Chats({
         </div>
         <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-foreground/15 bg-amber-50/40 p-5 sm:p-6 text-center">
           <div className="text-lg font-semibold">Upload a PDF</div>
-          <div className="text-xs text-muted-foreground">Supported: reports, manuals, research papers.</div>          {!hasKey && (
+          <div className="text-xs text-muted-foreground">Supported: reports, manuals, research papers.</div>
+          {!hasKey && (
             <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-50 p-3 text-left">
               <div className="text-xs font-semibold text-amber-800">Enter your Gemini API key first</div>
               <div className="mt-2 flex flex-col gap-2 sm:flex-row">
@@ -590,13 +672,20 @@ export default function Chats({
               </div>
               <div className="mt-1 text-xs text-muted-foreground">Your key is stored securely in your user profile.</div>
             </div>
-          )}          <label
+          )}
+          <label
             htmlFor="file"
             className="cursor-pointer rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background hover:bg-foreground/90"
           >
             {isUploading ? "Uploading..." : "Choose PDF"}
           </label>
           <input id="file" type="file" accept=".pdf" className="hidden" onChange={handleChange} disabled={isUploading} />
+          {pageProgress.total > 0 && (
+            <div className="text-xs text-muted-foreground">Extracted pages: {pageProgress.done}/{pageProgress.total}</div>
+          )}
+          {chunkProgress.total > 0 && (
+            <div className="text-xs text-muted-foreground">Indexed chunks: {chunkProgress.done}/{chunkProgress.total}</div>
+          )}
           {name && <div className="mt-2 text-sm text-muted-foreground">{name}</div>}
           {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
         </div>
@@ -648,6 +737,16 @@ export default function Chats({
               {isUploading ? "Uploading..." : "Upload new PDF"}
             </Button>
             <span className="w-full truncate sm:w-auto">{name || "Ready"}</span>
+            {isUploading && pageProgress.total > 0 && (
+              <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[11px]">
+                Pages {pageProgress.done}/{pageProgress.total}
+              </span>
+            )}
+            {isUploading && chunkProgress.total > 0 && (
+              <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[11px]">
+                Chunks {chunkProgress.done}/{chunkProgress.total}
+              </span>
+            )}
             {isProcessing && (
               <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[11px]">Working...</span>
             )}
